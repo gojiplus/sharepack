@@ -38,6 +38,7 @@ source = "uv-dynamic-versioning"
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+extend-exclude = ["tests/fixtures_tasktrack"]
 
 [tool.ruff.lint]
 external = ["DOC"]

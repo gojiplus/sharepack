@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from sharepack.adapters import detect
 from sharepack.build import build
 from sharepack.collect import collect
-from sharepack.adapters import detect
 
 FIXTURE = Path(__file__).parent / "fixtures_tasktrack"
 
@@ -62,11 +62,17 @@ def test_build_produces_selfcontained_html(tmp_path):
     build(FIXTURE, out, quiet=True)
     html = out.read_text()
     assert "<!DOCTYPE html>" in html
-    for placeholder in ("__FILES_JSON__", "__BOOT_PY__", "__TITLE__",
-                        "__PYODIDE_PACKAGES__", "__PIP_INSTALL__"):
+    for placeholder in (
+        "__FILES_JSON__",
+        "__BOOT_PY__",
+        "__TITLE__",
+        "__PYODIDE_PACKAGES__",
+        "__PIP_INSTALL__",
+    ):
         assert placeholder not in html, f"unreplaced: {placeholder}"
     m = re.search(r"const FILES = (\{.*?\});\n", html, re.S)
     payload = json.loads(m.group(1))
     assert "db.sqlite3" in payload
-    assert "sqlite3" in html and "tzdata" in html
+    assert "sqlite3" in html
+    assert "tzdata" in html
     assert "DJANGO_ALLOW_ASYNC_UNSAFE" in html
