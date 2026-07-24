@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sharepack"
+version = "0.1.0"
+description = "Turn a local Python web app into a single HTML file anyone can open. No server, no tunnel, no install."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Gaurav Sood" }]
+keywords = ["django", "pyodide", "wasm", "demo", "share", "single-file"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Framework :: Django",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.urls]
+Homepage = "https://github.com/gojiplus/sharepack"
+Repository = "https://github.com/gojiplus/sharepack"
+Documentation = "https://gojiplus.github.io/sharepack/"
+
+[project.scripts]
+sharepack = "sharepack.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sharepack"]

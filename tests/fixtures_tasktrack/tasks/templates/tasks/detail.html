@@ -1,0 +1,12 @@
+{% extends "tasks/base.html" %}
+{% block content %}
+<a class="back" href="/">← back to ledger</a>
+<header style="margin-top:1rem"><h1>{{ task.title }}</h1></header>
+<p class="meta">
+  {{ task.get_priority_display }} priority ·
+  {% if task.done %}done{% else %}open{% endif %} ·
+  added {{ task.created|date:"M j, Y" }}
+</p>
+{% if task.notes %}<p class="notes">{{ task.notes }}</p>
+{% else %}<p class="empty">No notes on this one.</p>{% endif %}
+{% endblock %}

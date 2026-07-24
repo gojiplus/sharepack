@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>__TITLE__ — sharepack demo</title>
+<style>
+  html,body { height:100%; margin:0; }
+  body { font:14px ui-monospace,Menlo,monospace; background:#101613; color:#cfe3d8;
+         display:flex; flex-direction:column; }
+  #bar { padding:.5rem .9rem; background:#0b100d; border-bottom:1px solid #223028;
+         display:flex; gap:1rem; align-items:center; flex:none; }
+  #bar b { color:#7fd6ac; font-weight:600; }
+  #bar span { color:#5f7a6d; }
+  #stage { flex:1; position:relative; }
+  #boot { position:absolute; inset:0; display:flex; flex-direction:column;
+          align-items:center; justify-content:center; gap:.9rem; background:#101613; }
+  #boot .dot { width:10px; height:10px; border-radius:50%; background:#7fd6ac;
+               animation:pulse 1s infinite alternate; }
+  @keyframes pulse { from {opacity:.25; transform:scale(.8);} to {opacity:1; transform:scale(1.15);} }
+  #status { color:#8fae9f; }
+  #err { color:#e08b7b; max-width:46rem; white-space:pre-wrap; display:none; padding:0 1rem;
+         max-height:60vh; overflow:auto; }
+  iframe { width:100%; height:100%; border:0; background:#fff; display:none; }
+</style>
+</head>
+<body>
+<div id="bar"><b>sharepack</b><span>__TITLE__ · runs entirely in this tab · no data leaves your device</span></div>
+<div id="stage">
+  <div id="boot"><div class="dot"></div><div id="status">Starting Python…</div><div id="err"></div></div>
+  <iframe id="app"></iframe>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v__PYODIDE_VERSION__/full/pyodide.js"></script>
+<script>
+const FILES = __FILES_JSON__;
+const APP_GLOBALS = __APP_GLOBALS__;
+const PYODIDE_PACKAGES = __PYODIDE_PACKAGES__;
+const PIP_INSTALL = __PIP_INSTALL__;
+const status = m => document.getElementById('status').textContent = m;
+const fail = e => { document.querySelector('#boot .dot').style.display='none';
+                    status('Boot failed.');
+                    const el=document.getElementById('err');
+                    el.style.display='block'; el.textContent=String(e); };
+
+const BOOT_PY = `__BOOT_PY__`;
+
+let handle = null;
+
+async function boot() {
+  try {
+    status('Loading Python runtime (~10 MB, first load only)…');
+    const py = await loadPyodide();
+    status('Loading packages…');
+    await py.loadPackage(PYODIDE_PACKAGES);
+    const micropip = py.pyimport('micropip');
+    status('Installing app framework…');
+    await micropip.install(PIP_INSTALL);
+    status('Unpacking app + data…');
+    py.globals.set('FILES_JSON', JSON.stringify(FILES));
+    for (const [k, v] of Object.entries(APP_GLOBALS)) py.globals.set(k, v);
+    status('Booting app…');
+    await py.runPythonAsync(BOOT_PY);
+    handle = py.globals.get('handle');
+    await navigate('GET', '/', null);
+    document.getElementById('boot').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  } catch (e) { console.error(e); fail(e); }
+}
+
+async function navigate(method, path, formObj) {
+  const res = JSON.parse(handle(method, path, JSON.stringify(formObj || {})));
+  const frame = document.getElementById('app');
+  frame.srcdoc = res.body;
+  frame.onload = () => wire(frame.contentDocument);
+}
+
+function wire(doc) {
+  doc.addEventListener('click', ev => {
+    const a = ev.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href') || '';
+    if (href.startsWith('http://') || href.startsWith('https://')) {
+      ev.preventDefault(); window.open(href, '_blank'); return;
+    }
+    if (href.startsWith('#') || href === '') return;
+    ev.preventDefault();
+    navigate('GET', href, null);
+  });
+  doc.addEventListener('submit', ev => {
+    ev.preventDefault();
+    const form = ev.target;
+    const data = {};
+    new FormData(form).forEach((v, k) => { data[k] = v; });
+    const action = form.getAttribute('action') || '/';
+    navigate((form.method || 'GET').toUpperCase(), action, data);
+  });
+}
+
+boot();
+</script>
+</body>
+</html>

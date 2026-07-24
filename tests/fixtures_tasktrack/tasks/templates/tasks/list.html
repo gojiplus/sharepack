@@ -1,0 +1,32 @@
+{% extends "tasks/base.html" %}
+{% block content %}
+<header>
+  <h1>Fieldnotes</h1>
+  <span class="count">{{ open_count }} open</span>
+</header>
+
+{% for task in tasks %}
+  <div class="task {% if task.done %}done{% endif %}">
+    <a class="tick" href="/task/{{ task.pk }}/toggle/" title="Toggle done">{% if task.done %}✓{% else %}&nbsp;{% endif %}</a>
+    <a class="title" href="/task/{{ task.pk }}/">{{ task.title }}</a>
+    <span class="pri p{{ task.priority }}">{{ task.get_priority_display }}</span>
+    <a class="del" href="/task/{{ task.pk }}/delete/" title="Delete">×</a>
+  </div>
+{% empty %}
+  <p class="empty">Nothing here. Add the first task below.</p>
+{% endfor %}
+
+<form class="add" method="post" action="/">
+  <label for="t">New task</label>
+  <input id="t" type="text" name="title" placeholder="What needs doing?" required>
+  <label for="p">Priority</label>
+  <select id="p" name="priority">
+    <option value="1">Low</option>
+    <option value="2" selected>Medium</option>
+    <option value="3">High</option>
+  </select>
+  <label for="n">Notes</label>
+  <textarea id="n" name="notes" placeholder="Optional context"></textarea>
+  <button type="submit">Add to ledger</button>
+</form>
+{% endblock %}

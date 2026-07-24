@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fieldnotes — task ledger</title>
+<style>
+  :root {
+    --paper:#f6f5f0; --ink:#1c2321; --pine:#1f5c45; --pine-soft:#e3ece7;
+    --rust:#a4482c; --line:#d8d6cc; --mut:#6b7370;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--paper); color:var(--ink);
+         font:16px/1.55 Georgia,'Times New Roman',serif; padding:2.5rem 1rem; }
+  .wrap { max-width:640px; margin:0 auto; }
+  header { border-bottom:3px double var(--ink); padding-bottom:.75rem; margin-bottom:1.5rem;
+           display:flex; justify-content:space-between; align-items:baseline; }
+  h1 { font-size:1.6rem; font-weight:normal; letter-spacing:.02em; }
+  .count { font:12px/1 ui-monospace,Menlo,monospace; color:var(--mut);
+           border:1px solid var(--line); padding:.3rem .55rem; border-radius:999px; }
+  .task { display:flex; gap:.8rem; align-items:baseline; padding:.7rem .2rem;
+          border-bottom:1px solid var(--line); }
+  .task.done .title { text-decoration:line-through; color:var(--mut); }
+  .tick { font:14px ui-monospace,Menlo,monospace; text-decoration:none;
+          color:var(--pine); border:1.5px solid var(--pine); border-radius:4px;
+          width:1.35rem; height:1.35rem; display:inline-flex;
+          align-items:center; justify-content:center; flex:none; }
+  .task.done .tick { background:var(--pine); color:var(--paper); }
+  .title { color:inherit; text-decoration:none; flex:1; }
+  .title:hover { text-decoration:underline; }
+  .pri { font:11px ui-monospace,Menlo,monospace; letter-spacing:.08em;
+         text-transform:uppercase; color:var(--mut); }
+  .pri.p3 { color:var(--rust); }
+  .del { font:13px ui-monospace,Menlo,monospace; color:var(--mut); text-decoration:none; }
+  .del:hover { color:var(--rust); }
+  form.add { margin-top:1.75rem; background:var(--pine-soft); border:1px solid var(--line);
+             border-radius:8px; padding:1rem; display:grid; gap:.6rem; }
+  form.add label { font:11px ui-monospace,Menlo,monospace; letter-spacing:.08em;
+                   text-transform:uppercase; color:var(--pine); }
+  input[type=text], textarea, select {
+    font:15px Georgia,serif; padding:.5rem .6rem; border:1px solid var(--line);
+    border-radius:6px; background:#fff; width:100%; }
+  textarea { min-height:3.2rem; resize:vertical; }
+  button { font:14px ui-monospace,Menlo,monospace; background:var(--pine); color:var(--paper);
+           border:none; border-radius:6px; padding:.55rem 1rem; cursor:pointer;
+           justify-self:start; }
+  button:hover { background:#174a37; }
+  .back { font:13px ui-monospace,Menlo,monospace; color:var(--pine); text-decoration:none; }
+  .meta { color:var(--mut); font-size:.9rem; margin:.35rem 0 1rem; }
+  .notes { white-space:pre-wrap; border-left:3px solid var(--pine); padding-left:1rem; }
+  .empty { color:var(--mut); font-style:italic; padding:1rem 0; }
+</style>
+</head>
+<body><div class="wrap">
+{% block content %}{% endblock %}
+</div></body>
+</html>
