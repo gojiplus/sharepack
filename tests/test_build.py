@@ -8,6 +8,7 @@ from sharepack.build import PYODIDE_VERSION, build
 from sharepack.errors import ProjectError
 
 FIXTURE = Path(__file__).parent / "fixtures_tasktrack"
+ALL_FIXTURES = ("fixtures_tasktrack", "fixtures_flaskapp", "fixtures_fastapiapp")
 
 # The exact extraction regexes tests/e2e/replay.mjs uses. If a template
 # change breaks one of these, the e2e harness breaks with it.
@@ -53,22 +54,51 @@ def test_build_payload_contains_database(tmp_path):
     assert "DJANGO_ALLOW_ASYNC_UNSAFE" in html
 
 
-def test_replay_contract(tmp_path):
+@pytest.mark.parametrize("fixture", ALL_FIXTURES)
+def test_replay_contract(tmp_path, fixture):
     """The e2e harness regex-extracts these exact shapes from the HTML."""
     out = tmp_path / "demo.html"
-    build(FIXTURE, out)
+    build(Path(__file__).parent / fixture, out)
     html = out.read_text(encoding="utf-8")
     for pattern in REPLAY_PATTERNS:
         assert re.search(pattern, html, re.S), f"replay.mjs contract broken: {pattern}"
 
 
-def test_boot_py_safe_inside_js_template_literal(tmp_path):
+@pytest.mark.parametrize("fixture", ALL_FIXTURES)
+def test_boot_py_safe_inside_js_template_literal(tmp_path, fixture):
     out = tmp_path / "demo.html"
-    build(FIXTURE, out)
+    build(Path(__file__).parent / fixture, out)
     html = out.read_text(encoding="utf-8")
     boot = re.search(r"const BOOT_PY = `\n([\s\S]*?)`;", html).group(1)
     assert "`" not in boot
     assert "${" not in boot
+
+
+def test_flask_build_globals_and_pins(tmp_path):
+    out = tmp_path / "demo.html"
+    build(Path(__file__).parent / "fixtures_flaskapp", out)
+    html = out.read_text(encoding="utf-8")
+    globals_ = json.loads(re.search(r"const APP_GLOBALS = (\{.*?\});\n", html).group(1))
+    assert globals_ == {"APP_SPEC": "app:app", "STATIC_URL": "/static/"}
+    pip = json.loads(re.search(r"const PIP_INSTALL = (\[.*?\]);\n", html).group(1))
+    assert pip == ["flask>=3,<4"]
+    pkgs = json.loads(
+        re.search(r"const PYODIDE_PACKAGES = (\[.*?\]);\n", html).group(1)
+    )
+    assert "Jinja2" in pkgs
+
+
+def test_fastapi_build_globals_and_pins(tmp_path):
+    out = tmp_path / "demo.html"
+    build(Path(__file__).parent / "fixtures_fastapiapp", out)
+    html = out.read_text(encoding="utf-8")
+    pip = json.loads(re.search(r"const PIP_INSTALL = (\[.*?\]);\n", html).group(1))
+    assert pip[0].startswith("fastapi")
+    assert any(req.startswith("python-multipart") for req in pip)
+    pkgs = json.loads(
+        re.search(r"const PYODIDE_PACKAGES = (\[.*?\]);\n", html).group(1)
+    )
+    assert "pydantic" in pkgs
 
 
 def test_pyodide_version_override(tmp_path):

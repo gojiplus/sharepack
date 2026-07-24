@@ -158,11 +158,13 @@ class FastAPIAdapter:
     """Detects a FastAPI project and supplies its Pyodide boot context."""
 
     name = "fastapi"
+    # ssl: anyio imports it at module level and Pyodide unvendors it.
     pyodide_packages: ClassVar[list[str]] = [
         "micropip",
         "pydantic",
         "Jinja2",
         "sqlite3",
+        "ssl",
     ]
 
     def __init__(
@@ -211,8 +213,7 @@ class FastAPIAdapter:
         if "manage.py" in files:
             return None
         warnings = [
-            "sync (def) endpoints run inline via a patched threadpool; "
-            "prefer async def"
+            "sync (def) endpoints run inline via a patched threadpool; prefer async def"
         ]
         if app_spec is not None:
             mod_name = app_spec.partition(":")[0]

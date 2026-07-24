@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pulseboard</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body><div class="wrap">
+<header><h1>Pulseboard</h1><a class="nav" href="/api/items">json api</a></header>
+<ul class="items">
+{% for item in items %}
+  <li class="{{ item.state }}"><span class="dot"></span>
+    <a href="/item/{{ item.id }}">{{ item.name }}</a>
+    <span class="state">{{ item.state }}</span></li>
+{% endfor %}
+</ul>
+<form method="post" action="/add">
+  <label>service <input type="text" name="name" required></label>
+  <label>state
+    <select name="state"><option>up</option><option>down</option></select>
+  </label>
+  <button type="submit">add service</button>
+</form>
+</div></body>
+</html>
