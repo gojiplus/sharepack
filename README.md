@@ -38,20 +38,26 @@ sharepack converts *running code* into *static content*. The host (email,
 Slack, a file share) only ever moves bytes. The recipient executes the app
 in the same browser sandbox as any website they visit.
 
-## What works today (v0.1)
+## What works today
 
 Django projects that could, in principle, run on a laptop in airplane mode:
 
-- `manage.py` at the project root
+- `manage.py` at the project root (or pass `--settings-module`)
 - SQLite (the `.sqlite3` file ships inside the bundle, demo-sized data)
 - Pure-Python dependencies (Django itself qualifies)
-- Synchronous request/response views, GET + POST forms
+- Synchronous request/response views, GET + POST forms (multi-value
+  fields included)
+- `/static/` files — stylesheets, images, fonts — served from the bundle
+- Non-HTML responses: JSON pretty-prints, images display, binary
+  downloads get a download link
 
 At build time sharepack strips `.env` files and credential-named files,
 replaces your `SECRET_KEY` with a throwaway, prints exactly what it
-scrubbed, and warns about dependencies that won't survive the trip
-(psycopg2, mysqlclient, ...). At boot it patches `ALLOWED_HOSTS`,
-`DEBUG`, and Django's async-context guard so you don't have to.
+scrubbed and skipped (`--dry-run` shows the full list before you build),
+and warns about dependencies that won't survive the trip (psycopg2,
+mysqlclient, ...) and about payloads too big to email. At boot it patches
+`ALLOWED_HOSTS`, `DEBUG`, and Django's async-context guard so you don't
+have to.
 
 ## What doesn't (yet or ever)
 
@@ -59,8 +65,8 @@ scrubbed, and warns about dependencies that won't survive the trip
   Celery/cron, Postgres/MySQL/Redis, shared state between viewers. Each
   recipient gets a private copy; writes persist across clicks, reset on
   reload.
-- **Yet (roadmap):** Flask/FastAPI adapters, `/static/` routing, binary
-  responses (images, downloads), file uploads, vendored offline runtime.
+- **Yet (roadmap):** Flask/FastAPI adapters, file uploads, CSS `url(...)`
+  rewriting inside stylesheets, vendored offline runtime.
 
 The viewer needs internet on first load: the Pyodide runtime (~10 MB) and
 the Django wheel come from public CDNs and are cached by the browser.
@@ -86,14 +92,15 @@ Streamlit), [django_webassembly](https://github.com/m-butterfield/django_webasse
 ## Development
 
 ```bash
-pip install -e . pytest
-pytest                                    # build-side tests
-sharepack tests/fixtures_tasktrack -o /tmp/demo.html
-npm install pyodide && node tests/e2e/replay.mjs /tmp/demo.html   # runtime replay
+uv sync --all-groups
+uv run pytest
+uv run sharepack tests/fixtures_tasktrack -o demo.html --open
+npm ci --prefix tests/e2e && node tests/e2e/replay.mjs demo.html
 ```
 
 The e2e test replays the emitted artifact's exact boot sequence and request
-cycle headlessly in Node — it tests the actual product, not a mock.
+cycle headlessly in Node — it tests the actual product, not a mock. Docs:
+`uv run sphinx-build -W -b html docs _site`.
 
 ## License
 
