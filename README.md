@@ -8,9 +8,12 @@
 Turn a local Python web app into a **single HTML file** anyone can open.
 No server, no tunnel, no deploy, no install on either side.
 
-**[Try the live demo](https://gojiplus.github.io/sharepack/demo.html)** — a
-Django app running entirely in your browser tab — then read the
-**[docs](https://gojiplus.github.io/sharepack/)**.
+Works with **Django, Flask, and FastAPI**. Try the live demos — each is a
+real app running entirely in your browser tab —
+**[Django](https://gojiplus.github.io/sharepack/demo.html)** ·
+**[Flask](https://gojiplus.github.io/sharepack/flask-demo.html)** ·
+**[FastAPI](https://gojiplus.github.io/sharepack/fastapi-demo.html)** —
+then read the **[docs](https://gojiplus.github.io/sharepack/)**.
 
 ```bash
 pip install sharepack
@@ -40,11 +43,14 @@ in the same browser sandbox as any website they visit.
 
 ## What works today
 
-Django projects that could, in principle, run on a laptop in airplane mode:
+Django, Flask, and FastAPI projects that could, in principle, run on a
+laptop in airplane mode:
 
-- `manage.py` at the project root (or pass `--settings-module`)
+- A recognizable entry point: `manage.py` for Django (or
+  `--settings-module`), an entry module like `app.py`/`main.py` that
+  instantiates the app for Flask/FastAPI (or `--app module:variable`)
 - SQLite (the `.sqlite3` file ships inside the bundle, demo-sized data)
-- Pure-Python dependencies (Django itself qualifies)
+- Pure-Python dependencies (all three frameworks qualify)
 - Synchronous request/response views, GET + POST forms (multi-value
   fields included)
 - `/static/` files — stylesheets, images, fonts — served from the bundle
@@ -52,12 +58,12 @@ Django projects that could, in principle, run on a laptop in airplane mode:
   downloads get a download link
 
 At build time sharepack strips `.env` files and credential-named files,
-replaces your `SECRET_KEY` with a throwaway, prints exactly what it
+replaces Django's `SECRET_KEY` with a throwaway, prints exactly what it
 scrubbed and skipped (`--dry-run` shows the full list before you build),
 and warns about dependencies that won't survive the trip (psycopg2,
 mysqlclient, ...) and about payloads too big to email. At boot it patches
-`ALLOWED_HOSTS`, `DEBUG`, and Django's async-context guard so you don't
-have to.
+what each framework needs to run serverless in a tab (Django's
+`ALLOWED_HOSTS`/`DEBUG`/async guard, FastAPI's threadpool).
 
 ## What doesn't (yet or ever)
 
@@ -65,8 +71,8 @@ have to.
   Celery/cron, Postgres/MySQL/Redis, shared state between viewers. Each
   recipient gets a private copy; writes persist across clicks, reset on
   reload.
-- **Yet (roadmap):** Flask/FastAPI adapters, file uploads, CSS `url(...)`
-  rewriting inside stylesheets, vendored offline runtime.
+- **Yet (roadmap):** file uploads, CSS `url(...)` rewriting inside
+  stylesheets, vendored offline runtime.
 
 The viewer needs internet on first load: the Pyodide runtime (~10 MB) and
 the Django wheel come from public CDNs and are cached by the browser.
@@ -78,11 +84,12 @@ the Django wheel come from public CDNs and are cached by the browser.
 3. **Encode:** base64 every file into one JSON payload.
 4. **Emit:** splice payload + boot script into an HTML template.
 
-On open, the page loads Pyodide, installs Django via micropip, writes your
-files into the WASM virtual filesystem, and routes every link click and
-form submit through `django.test.Client` — Django's own request machinery,
-repurposed as the transport. The app renders in an iframe. There is no
-port, no socket, and no server anywhere.
+On open, the page loads Pyodide, installs your framework via micropip,
+writes your files into the WASM virtual filesystem, and routes every link
+click and form submit through a server-free transport: `django.test.Client`
+for Django, the werkzeug test client for Flask, and a minimal in-process
+ASGI driver for FastAPI. The app renders in an iframe. There is no port,
+no socket, and no server anywhere.
 
 Prior art this stands on: [WordPress Playground](https://wordpress.github.io/wordpress-playground/)
 (the pattern), [stlite](https://github.com/whitphx/stlite) (same idea for
@@ -95,7 +102,8 @@ Streamlit), [django_webassembly](https://github.com/m-butterfield/django_webasse
 uv sync --all-groups
 uv run pytest
 uv run sharepack tests/fixtures_tasktrack -o demo.html --open
-npm ci --prefix tests/e2e && node tests/e2e/replay.mjs demo.html
+npm ci --prefix tests/e2e
+node tests/e2e/replay.mjs demo.html tasktrack   # also: flaskapp, fastapiapp
 ```
 
 The e2e test replays the emitted artifact's exact boot sequence and request

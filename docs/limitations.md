@@ -21,9 +21,16 @@ the outside world, or another process, does not travel:
   CSS files (background images, font faces) are not yet rewritten.
 - **Browser history** — the back button navigates the outer page, not the
   app; routing happens inside a single iframe.
-- **Only Django** — the adapter registry is designed for more frameworks
-  (Flask and FastAPI are natural next steps), but Django is the only adapter
-  today.
+- **FastAPI sync endpoints** — `def` (non-async) endpoints run inline on
+  the event loop instead of a threadpool (WebAssembly has no threads).
+  Fine for demos; prefer `async def`.
+- **Secret scrubbing is Django-shaped** — only Django's `settings.py`
+  `SECRET_KEY` is rewritten. A Flask `app.secret_key` or FastAPI settings
+  constant in source ships as-is; keep real secrets in `.env` files (which
+  are always excluded) and check `--dry-run` before sharing.
+- **Absolute self-links** — `url_for(..., _external=True)` and other
+  absolute URLs open in a new tab as external links instead of navigating
+  the demo.
 
 ## FAQ
 

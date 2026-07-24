@@ -40,12 +40,17 @@ sharepack PROJECT [-o OUT] [options]
 : Django settings module, for projects where detection from `manage.py`
   fails (custom `DJANGO_SETTINGS_MODULE` logic, split settings, etc.).
 
+`--app MODULE:VAR`
+: Flask/FastAPI app location (e.g. `app:app`, `main:api`), for projects
+  where entry-module detection fails. Same syntax as gunicorn/uvicorn.
+
 `--pyodide-version X.Y.Z`
 : Pyodide release the artifact loads from the CDN at view time.
 
-`--django-pin SPEC`
-: pip requirement installed in the browser for the framework.
-  Default: `django>=4.2,<5.2`.
+`--pip-pin SPEC`
+: pip requirement installed in the browser for the framework. Defaults:
+  `django>=4.2,<5.2`, `flask>=3,<4`, `fastapi>=0.110,<0.116`.
+  (`--django-pin` still works as an alias.)
 
 ## Exit status
 
@@ -59,5 +64,6 @@ sharepack myproject -o demo.html --open
 sharepack myproject --dry-run
 sharepack myproject --include "data/*.csv" --exclude "notebooks/*"
 sharepack myproject --settings-module config.settings.dev
-sharepack myproject --django-pin "django==5.0.6"
+sharepack myflaskapp --app serve:application
+sharepack myproject --pip-pin "django==5.0.6"
 ```

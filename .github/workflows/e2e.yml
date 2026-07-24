@@ -16,6 +16,10 @@ jobs:
   replay:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [tasktrack, flaskapp, fastapiapp]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,12 +31,12 @@ jobs:
       - name: Build the demo artifact
         run: |
           uv sync --frozen
-          uv run sharepack tests/fixtures_tasktrack -o demo.html
+          uv run sharepack tests/fixtures_${{ matrix.fixture }} -o demo.html
       - name: Replay the artifact under real Pyodide
         run: |
           npm ci --prefix tests/e2e
-          node tests/e2e/replay.mjs demo.html
+          node tests/e2e/replay.mjs demo.html ${{ matrix.fixture }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: demo
+          name: demo-${{ matrix.fixture }}
           path: demo.html

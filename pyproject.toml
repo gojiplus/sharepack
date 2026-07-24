@@ -10,7 +10,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "Gaurav Sood" }]
-keywords = ["django", "pyodide", "wasm", "demo", "share", "single-file"]
+keywords = ["django", "flask", "fastapi", "pyodide", "wasm", "demo", "share", "single-file"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",

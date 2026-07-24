@@ -10,8 +10,11 @@ sharepack is a four-stage build pipeline plus a small browser runtime.
    scrubbed (below). Everything kept is read as bytes.
 2. **Detect** — find the framework. The Django adapter looks for `manage.py`
    and reads the settings module out of it (`--settings-module` overrides
-   this). It also parses `STATIC_URL`, spots incompatible dependencies in
-   `requirements.txt`, and warns about non-SQLite database backends.
+   this); it also parses `STATIC_URL` and warns about non-SQLite database
+   backends. The Flask and FastAPI adapters scan entry modules (`app.py`,
+   `main.py`, …) for an app instantiation (`--app module:variable`
+   overrides). All adapters warn about incompatible dependencies found in
+   `requirements.txt`.
 3. **Encode** — base64 every file into one JSON payload.
 4. **Emit** — splice the payload, a Python boot script, and framework
    metadata into an HTML template. The output is one self-contained file.
@@ -40,11 +43,18 @@ When the recipient opens the file:
    the jsDelivr CDN and installs Django with micropip from PyPI. This is the
    only time the network is used.
 2. The boot script writes every bundled file into the WASM virtual
-   filesystem at `/app/`, calls `django.setup()`, and creates a
-   `django.test.Client` — Django's own request machinery, repurposed as the
-   transport.
+   filesystem at `/app/` and boots the framework through a server-free
+   transport:
+   - **Django** — `django.setup()` plus `django.test.Client`, Django's own
+     request machinery repurposed as the transport.
+   - **Flask** — the app's `test_client()`, whose built-in cookie jar makes
+     sessions and flash messages work.
+   - **FastAPI** — a minimal in-process ASGI driver (the usual test client
+     needs threads, which WebAssembly doesn't have): it builds the request
+     scope by hand, follows redirects, and keeps its own cookie jar so
+     sessions survive. `anyio`'s threadpool is patched to run inline.
 3. Every link click and form submit is intercepted in JavaScript and routed
-   through that client. The response HTML is rendered into an iframe.
+   through that transport. The response HTML is rendered into an iframe.
    There is no port, no socket, and no server anywhere.
 
 ### Static files

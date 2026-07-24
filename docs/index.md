@@ -5,17 +5,22 @@ No server, no tunnel, no deploy, no install on either side.
 
 ```bash
 pip install sharepack
-sharepack /path/to/your/django/project -o demo.html
+sharepack /path/to/your/project -o demo.html
 ```
 
-Send `demo.html` over Slack or email. The recipient double-clicks it. Python
-boots in their browser via [Pyodide](https://pyodide.org) (WebAssembly), your
-app runs against a snapshot of your SQLite data, and every click and form
-submit is handled entirely inside their tab.
+Works with **Django, Flask, and FastAPI**. Send `demo.html` over Slack or
+email. The recipient double-clicks it. Python boots in their browser via
+[Pyodide](https://pyodide.org) (WebAssembly), your app runs against a
+snapshot of your SQLite data, and every click and form submit is handled
+entirely inside their tab.
 
-<p><strong><a href="demo.html">▶ Open the live demo</a></strong> — a Django
-task ledger running entirely in your browser, built from the example app that
-ships in sharepack's test suite.</p>
+<p><strong>Live demos</strong> — each built from a fixture app in sharepack's
+test suite, running entirely in your browser:</p>
+<ul>
+<li><a href="demo.html">▶ Fieldnotes</a> — a Django task ledger</li>
+<li><a href="flask-demo.html">▶ Clipnotes</a> — a Flask snippet ledger</li>
+<li><a href="fastapi-demo.html">▶ Pulseboard</a> — a FastAPI status board with a JSON API</li>
+</ul>
 
 ## Why
 

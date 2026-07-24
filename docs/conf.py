@@ -8,12 +8,15 @@ import sharepack
 
 configure(globals())
 
-# Build the live demo from the fixture app so the docs site ships a working
-# artifact at /demo.html, produced by the exact code being documented.
+# Build the live demos from the fixture apps so the docs site ships working
+# artifacts, produced by the exact code being documented.
 _generated = Path(__file__).parent / "_generated"
 _generated.mkdir(exist_ok=True)
-sharepack.build(
-    Path(__file__).parents[1] / "tests" / "fixtures_tasktrack",
-    _generated / "demo.html",
-)
+_fixtures = Path(__file__).parents[1] / "tests"
+for _fixture, _out in (
+    ("fixtures_tasktrack", "demo.html"),
+    ("fixtures_flaskapp", "flask-demo.html"),
+    ("fixtures_fastapiapp", "fastapi-demo.html"),
+):
+    sharepack.build(_fixtures / _fixture, _generated / _out)
 html_extra_path = ["_generated"]
