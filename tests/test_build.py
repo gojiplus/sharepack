@@ -15,7 +15,7 @@ REPLAY_PATTERNS = (
     r"const FILES = (\{.*?\});\n",
     r"const APP_GLOBALS = (\{.*?\});\n",
     r"const PYODIDE_PACKAGES = (\[.*?\]);\n",
-    r'const PIP_INSTALL = (".*?");\n',
+    r"const PIP_INSTALL = (\[.*?\]);\n",
     r"const BOOT_PY = `\n([\s\S]*?)`;",
 )
 

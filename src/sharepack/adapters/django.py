@@ -5,34 +5,14 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
+from ._shared import ENVELOPE_PY, UNPACK_PY, find_db_files, requirements_warnings
+
 DJANGO_PIN = "django>=4.2,<5.2"
-DATA_EXT = {".sqlite3", ".db", ".sqlite"}
-INCOMPATIBLE_DEPS = (
-    "psycopg",
-    "mysqlclient",
-    "lxml",
-    "cryptography",
-    "uwsgi",
-    "gunicorn-native",
-    "grpcio",
-)
 
 SETTINGS_MODULE_RE = re.compile(r"""['"]([\w.]+\.settings[\w.]*)['"]""")
 STATIC_URL_RE = re.compile(r"""^\s*STATIC_URL\s*=\s*['"]([^'"]+)['"]""", re.M)
 
-# Runs inside Pyodide. Spliced into a JS template literal, so it must never
-# contain a backtick or "${", and it must keep its leading newline (the e2e
-# replay harness extracts it by that exact shape).
-BOOT_PY = r"""
-import base64, json, mimetypes, os, sys
-files = json.loads(FILES_JSON)
-for rel, b64 in files.items():
-    path = "/app/" + rel
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "wb") as f:
-        f.write(base64.b64decode(b64))
-sys.path.insert(0, "/app")
-os.chdir("/app")
+DJANGO_PY = r"""
 os.environ["DJANGO_SETTINGS_MODULE"] = SETTINGS_MODULE
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
@@ -46,9 +26,6 @@ if not getattr(settings, "SECRET_KEY", None):
 
 from django.test import Client
 client = Client(enforce_csrf_checks=False)
-
-TEXT_CTYPES = ("application/json", "application/xml", "application/javascript",
-               "application/xhtml+xml")
 
 
 def _find_static(rel):
@@ -73,8 +50,7 @@ def _serve_static(path):
     ctype = mimetypes.guess_type(hit)[0] or "application/octet-stream"
     with open(hit, "rb") as f:
         raw = f.read()
-    return json.dumps({"status": 200, "path": path, "ctype": ctype,
-                       "b64": True, "body": base64.b64encode(raw).decode()})
+    return _envelope(200, path, ctype, raw)
 
 
 def handle(method, path, form_json):
@@ -88,20 +64,12 @@ def handle(method, path, form_json):
             resp = client.get(path, form or None, follow=True)
         final = resp.redirect_chain[-1][0] if resp.redirect_chain else path
         ctype = resp.headers.get("Content-Type", "text/html")
-        main = ctype.split(";")[0].strip().lower()
-        textual = (main.startswith("text/") or main in TEXT_CTYPES
-                   or main.endswith("+json") or main.endswith("+xml"))
-        if textual:
-            body, b64 = resp.content.decode("utf-8", "replace"), False
-        else:
-            body, b64 = base64.b64encode(resp.content).decode(), True
-        return json.dumps({"status": resp.status_code, "path": final,
-                           "ctype": ctype, "b64": b64, "body": body})
+        return _envelope(resp.status_code, final, ctype, resp.content)
     except Exception:
-        import traceback
-        return json.dumps({"status": 500, "path": path, "ctype": "text/plain",
-                           "b64": False, "body": traceback.format_exc()})
+        return _error(path)
 """
+
+BOOT_PY = UNPACK_PY + ENVELOPE_PY + DJANGO_PY
 
 
 class DjangoAdapter:
@@ -131,12 +99,18 @@ class DjangoAdapter:
         self.warnings = warnings
         self.static_url = static_url
 
+    @property
+    def describe(self) -> str:
+        """One-line description of what boots this app."""
+        return f"settings: {self.settings_module}"
+
     @classmethod
     def detect(
         cls,
         project: Path,
         files: dict[str, bytes],
         settings_module: str | None = None,
+        app_spec: str | None = None,
     ) -> "DjangoAdapter | None":
         """Recognize a Django project from its collected files.
 
@@ -145,6 +119,7 @@ class DjangoAdapter:
             files: Collected project files keyed by relative path.
             settings_module: Explicit settings module; when given,
                 detection from manage.py is skipped.
+            app_spec: Ignored; accepted for adapter interface parity.
 
         Returns:
             An adapter instance, or None if this is not a Django project.
@@ -173,14 +148,8 @@ class DjangoAdapter:
             warnings.append(
                 "non-SQLite database backend in settings; sharepack only ships SQLite"
             )
-        reqs = files.get("requirements.txt", b"").decode("utf-8", "replace").lower()
-        for bad in INCOMPATIBLE_DEPS:
-            if bad in reqs:
-                warnings.append(
-                    f"requirements.txt mentions '{bad}'; "
-                    "compiled deps may not load in WASM"
-                )
-        db = [f for f in files if Path(f).suffix.lower() in DATA_EXT]
+        warnings += requirements_warnings(files)
+        db = find_db_files(files)
         if not db:
             warnings.append(
                 "no SQLite file found; app must work with an empty/no database"
@@ -198,7 +167,7 @@ class DjangoAdapter:
             Mapping of ``__PLACEHOLDER__`` names to replacement strings.
         """
         return {
-            "__PIP_INSTALL__": json.dumps(pip_pin or DJANGO_PIN),
+            "__PIP_INSTALL__": json.dumps([pip_pin or DJANGO_PIN]),
             "__PYODIDE_PACKAGES__": json.dumps(self.pyodide_packages),
             "__APP_GLOBALS__": json.dumps(
                 {

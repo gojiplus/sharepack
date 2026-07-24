@@ -58,21 +58,21 @@ async function boot() {
     await py.loadPackage(PYODIDE_PACKAGES);
     const micropip = py.pyimport('micropip');
     status('Installing app framework…');
-    await micropip.install(PIP_INSTALL);
+    for (const req of PIP_INSTALL) { await micropip.install(req); }
     status('Unpacking app + data…');
     py.globals.set('FILES_JSON', JSON.stringify(FILES));
     for (const [k, v] of Object.entries(APP_GLOBALS)) py.globals.set(k, v);
     status('Booting app…');
     await py.runPythonAsync(BOOT_PY);
     handle = py.globals.get('handle');
-    navigate('GET', '/', null);
+    await navigate('GET', '/', null);
     document.getElementById('boot').style.display = 'none';
     document.getElementById('app').style.display = 'block';
   } catch (e) { console.error(e); fail(e); }
 }
 
-function request(method, path, formObj) {
-  return JSON.parse(handle(method, path, JSON.stringify(formObj || {})));
+async function request(method, path, formObj) {
+  return JSON.parse(await handle(method, path, JSON.stringify(formObj || {})));
 }
 
 function bytesOf(res) {
@@ -80,9 +80,9 @@ function bytesOf(res) {
   return new TextEncoder().encode(res.body);
 }
 
-function blobUrlFor(path) {
+async function blobUrlFor(path) {
   if (blobCache[path]) return blobCache[path];
-  const res = request('GET', path, null);
+  const res = await request('GET', path, null);
   if (res.status !== 200) return null;
   const type = (res.ctype || 'application/octet-stream').split(';')[0].trim();
   const url = URL.createObjectURL(new Blob([bytesOf(res)], {type: type}));
@@ -90,12 +90,12 @@ function blobUrlFor(path) {
   return url;
 }
 
-function rewriteStatic(doc) {
+async function rewriteStatic(doc) {
   for (const el of doc.querySelectorAll('[src], [href]')) {
     for (const attr of ['src', 'href']) {
       const val = el.getAttribute(attr);
       if (!val || !val.startsWith(STATIC_URL)) continue;
-      const url = blobUrlFor(val);
+      const url = await blobUrlFor(val);
       if (url) el.setAttribute(attr, url);
     }
   }
@@ -103,12 +103,12 @@ function rewriteStatic(doc) {
 
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-function render(res) {
+async function render(res) {
   const frame = document.getElementById('app');
   const main = (res.ctype || 'text/html').split(';')[0].trim().toLowerCase();
   if (main === 'text/html' || main === 'application/xhtml+xml') {
     const doc = new DOMParser().parseFromString(res.body, 'text/html');
-    rewriteStatic(doc);
+    await rewriteStatic(doc);
     frame.srcdoc = doc.documentElement.outerHTML;
     frame.onload = () => wire(frame.contentDocument);
     return;
@@ -136,10 +136,10 @@ function resolve(href) {
   return u.pathname + u.search;
 }
 
-function navigate(method, path, formObj) {
-  const res = request(method, path, formObj);
+async function navigate(method, path, formObj) {
+  const res = await request(method, path, formObj);
   currentPath = res.path || path;
-  render(res);
+  await render(res);
 }
 
 function wire(doc) {
@@ -152,7 +152,7 @@ function wire(doc) {
     }
     if (href.startsWith('#') || href === '') return;
     ev.preventDefault();
-    navigate('GET', resolve(href), null);
+    navigate('GET', resolve(href), null).catch(e => console.error(e));
   });
   doc.addEventListener('submit', ev => {
     ev.preventDefault();
@@ -167,7 +167,8 @@ function wire(doc) {
       }
     });
     const action = form.getAttribute('action') || currentPath;
-    navigate((form.method || 'GET').toUpperCase(), resolve(action), data);
+    navigate((form.method || 'GET').toUpperCase(), resolve(action), data)
+      .catch(e => console.error(e));
   });
 }
 
