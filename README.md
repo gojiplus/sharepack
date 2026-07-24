@@ -1,7 +1,16 @@
 # sharepack
 
+[![PyPI](https://img.shields.io/pypi/v/sharepack)](https://pypi.org/project/sharepack/)
+[![CI](https://github.com/gojiplus/sharepack/actions/workflows/ci.yml/badge.svg)](https://github.com/gojiplus/sharepack/actions/workflows/ci.yml)
+[![Docs](https://github.com/gojiplus/sharepack/actions/workflows/docs.yml/badge.svg)](https://gojiplus.github.io/sharepack/)
+[![Python](https://img.shields.io/pypi/pyversions/sharepack)](https://pypi.org/project/sharepack/)
+
 Turn a local Python web app into a **single HTML file** anyone can open.
 No server, no tunnel, no deploy, no install on either side.
+
+**[Try the live demo](https://gojiplus.github.io/sharepack/demo.html)** — a
+Django app running entirely in your browser tab — then read the
+**[docs](https://gojiplus.github.io/sharepack/)**.
 
 ```bash
 pip install sharepack
