@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<ul class="clips">
+{% for clip in clips %}
+  <li><a href="/clip/{{ clip.id }}">{{ clip.title }}</a></li>
+{% else %}
+  <li class="empty">no clips yet</li>
+{% endfor %}
+</ul>
+<form method="post" action="/">
+  <label>title <input type="text" name="title" required></label>
+  <label>body <textarea name="body"></textarea></label>
+  <button type="submit">save clip</button>
+</form>
+{% endblock %}

@@ -66,6 +66,7 @@ def build(
     include: Sequence[str] = (),
     exclude: Sequence[str] = (),
     settings_module: str | None = None,
+    app_spec: str | None = None,
     pyodide_version: str = PYODIDE_VERSION,
     pip_pin: str | None = None,
 ) -> BuildResult:
@@ -78,6 +79,8 @@ def build(
         exclude: Glob patterns keeping files out of the bundle.
         settings_module: Explicit Django settings module, bypassing
             detection from manage.py.
+        app_spec: Explicit ``module:variable`` locating a Flask or
+            FastAPI app, bypassing entry-module scanning.
         pyodide_version: Pyodide release loaded from the CDN at view time.
         pip_pin: Override for the framework's pip requirement string.
 
@@ -96,7 +99,12 @@ def build(
     if not project.is_dir():
         raise ProjectError(f"project path is not a directory: {project}")
     collection = collect(project, include=include, exclude=exclude)
-    adapter = detect(project, collection.files, settings_module=settings_module)
+    adapter = detect(
+        project,
+        collection.files,
+        settings_module=settings_module,
+        app_spec=app_spec,
+    )
 
     payload = {
         rel: base64.b64encode(data).decode() for rel, data in collection.files.items()

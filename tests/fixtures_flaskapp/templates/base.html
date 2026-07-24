@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clipnotes</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body><div class="wrap">
+<header><h1><a href="/">Clipnotes</a></h1><a class="nav" href="/about">about</a></header>
+{% with messages = get_flashed_messages() %}
+  {% for m in messages %}<p class="flash">{{ m }}</p>{% endfor %}
+{% endwith %}
+{% block content %}{% endblock %}
+</div></body>
+</html>

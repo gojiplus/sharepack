@@ -68,15 +68,25 @@ def _parser() -> argparse.ArgumentParser:
         help="Django settings module, if detection from manage.py fails",
     )
     ap.add_argument(
+        "--app",
+        dest="app_spec",
+        metavar="MODULE:VAR",
+        help="Flask/FastAPI app location (e.g. app:app), if entry-module "
+        "detection fails",
+    )
+    ap.add_argument(
         "--pyodide-version",
         default=PYODIDE_VERSION,
         metavar="X.Y.Z",
         help=f"Pyodide release loaded from the CDN (default: {PYODIDE_VERSION})",
     )
     ap.add_argument(
+        "--pip-pin",
         "--django-pin",
+        dest="pip_pin",
         metavar="SPEC",
-        help='pip requirement for the framework (default: "django>=4.2,<5.2")',
+        help="pip requirement override for the framework "
+        '(e.g. "django==5.0.6" or "flask==3.0.3")',
     )
     return ap
 
@@ -87,10 +97,13 @@ def _dry_run(args: argparse.Namespace) -> None:
         raise ProjectError(f"project path is not a directory: {args.project}")
     collection = collect(args.project, include=args.include, exclude=args.exclude)
     adapter = detect(
-        args.project, collection.files, settings_module=args.settings_module
+        args.project,
+        collection.files,
+        settings_module=args.settings_module,
+        app_spec=args.app_spec,
     )
     print(f"sharepack --dry-run: {args.project}")
-    print(f"  framework: {adapter.name} (settings: {adapter.settings_module})")
+    print(f"  framework: {adapter.name} ({adapter.describe})")
     print(
         f"  would bundle {len(collection.files)} files "
         f"({collection.total_bytes / 1e6:.1f} MB before base64):"
@@ -146,8 +159,9 @@ def main(argv: list[str] | None = None) -> None:
             include=args.include,
             exclude=args.exclude,
             settings_module=args.settings_module,
+            app_spec=args.app_spec,
             pyodide_version=args.pyodide_version,
-            pip_pin=args.django_pin,
+            pip_pin=args.pip_pin,
         )
     except SharepackError as e:
         print(f"error: {e}", file=sys.stderr)
