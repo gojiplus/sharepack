@@ -2,11 +2,23 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
-from .build import build
+from .build import BuildResult, build
+from .collect import CollectionResult, SkippedFile, collect
+from .errors import DetectionError, ProjectError, SharepackError
 
 try:
     __version__ = version("sharepack")
 except PackageNotFoundError:  # pragma: no cover - not installed
     __version__ = "0.0.0"
 
-__all__ = ["__version__", "build"]
+__all__ = [
+    "BuildResult",
+    "CollectionResult",
+    "DetectionError",
+    "ProjectError",
+    "SharepackError",
+    "SkippedFile",
+    "__version__",
+    "build",
+    "collect",
+]

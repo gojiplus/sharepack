@@ -18,16 +18,39 @@ for (const [k, v] of Object.entries(APP_GLOBALS)) py.globals.set(k, v);
 await py.runPythonAsync(BOOT_PY);
 const handle = py.globals.get("handle");
 
-const checks = [
-  ["GET", "/", {}, "Fieldnotes"],
-  ["POST", "/", {title:"e2e row", priority:"3", notes:""}, "e2e row"],
-  ["GET", "/task/1/", {}, "back to ledger"],
-  ["GET", "/task/1/toggle/", {}, "Fieldnotes"],
-];
-for (const [m, p, f, expect] of checks) {
-  const r = JSON.parse(handle(m, p, JSON.stringify(f)));
-  const ok = r.status === 200 && r.body.includes(expect);
-  console.log(`${m} ${p} -> ${r.status} ${ok ? "OK" : "FAIL"}`);
-  if (!ok) { console.log(r.body.slice(0, 800)); process.exit(1); }
+let failed = false;
+function check(label, r, cond) {
+  const ok = cond(r);
+  console.log(`${label} -> ${r.status} ${ok ? "OK" : "FAIL"}`);
+  if (!ok) {
+    console.log(String(r.body).slice(0, 800));
+    failed = true;
+  }
 }
+
+const req = (m, p, f) => JSON.parse(handle(m, p, JSON.stringify(f || {})));
+
+check("GET /", req("GET", "/", {}), r =>
+  r.status === 200 && r.body.includes("Fieldnotes"));
+check("POST / (create)", req("POST", "/", {title: "e2e row", priority: "3", notes: ""}), r =>
+  r.status === 200 && r.body.includes("e2e row"));
+check("GET /task/1/", req("GET", "/task/1/", {}), r =>
+  r.status === 200 && r.body.includes("back to ledger"));
+check("GET /task/1/toggle/", req("GET", "/task/1/toggle/", {}), r =>
+  r.status === 200 && r.body.includes("Fieldnotes"));
+
+// static file serving: base64 body, css content type, real content
+check("GET /static/tasks/extra.css", req("GET", "/static/tasks/extra.css", {}), r =>
+  r.status === 200 && r.b64 === true && r.ctype.startsWith("text/css") &&
+  atob(r.body).includes("fieldnotes-extra"));
+
+// GET form data must reach the view as query params without breaking it
+check("GET / (query data)", req("GET", "/", {q: "ledger"}), r =>
+  r.status === 200 && r.body.includes("Fieldnotes"));
+
+// multi-value POST fields (checkbox groups / multi-selects) must encode
+check("POST / (multi-value)", req("POST", "/", {title: "e2e multi", priority: "1", notes: "", tags: ["a", "b"]}), r =>
+  r.status === 200 && r.body.includes("e2e multi"));
+
+if (failed) process.exit(1);
 console.log("E2E PASS");

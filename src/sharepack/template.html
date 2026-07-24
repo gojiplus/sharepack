@@ -36,15 +36,19 @@ const FILES = __FILES_JSON__;
 const APP_GLOBALS = __APP_GLOBALS__;
 const PYODIDE_PACKAGES = __PYODIDE_PACKAGES__;
 const PIP_INSTALL = __PIP_INSTALL__;
+const STATIC_URL = APP_GLOBALS.STATIC_URL || '/static/';
 const status = m => document.getElementById('status').textContent = m;
 const fail = e => { document.querySelector('#boot .dot').style.display='none';
                     status('Boot failed.');
                     const el=document.getElementById('err');
-                    el.style.display='block'; el.textContent=String(e); };
+                    el.style.display='block';
+                    el.textContent = (e && e.message) ? e.message : String(e); };
 
 const BOOT_PY = `__BOOT_PY__`;
 
 let handle = null;
+let currentPath = '/';
+const blobCache = {};
 
 async function boot() {
   try {
@@ -61,17 +65,81 @@ async function boot() {
     status('Booting app…');
     await py.runPythonAsync(BOOT_PY);
     handle = py.globals.get('handle');
-    await navigate('GET', '/', null);
+    navigate('GET', '/', null);
     document.getElementById('boot').style.display = 'none';
     document.getElementById('app').style.display = 'block';
   } catch (e) { console.error(e); fail(e); }
 }
 
-async function navigate(method, path, formObj) {
-  const res = JSON.parse(handle(method, path, JSON.stringify(formObj || {})));
+function request(method, path, formObj) {
+  return JSON.parse(handle(method, path, JSON.stringify(formObj || {})));
+}
+
+function bytesOf(res) {
+  if (res.b64) return Uint8Array.from(atob(res.body), c => c.charCodeAt(0));
+  return new TextEncoder().encode(res.body);
+}
+
+function blobUrlFor(path) {
+  if (blobCache[path]) return blobCache[path];
+  const res = request('GET', path, null);
+  if (res.status !== 200) return null;
+  const type = (res.ctype || 'application/octet-stream').split(';')[0].trim();
+  const url = URL.createObjectURL(new Blob([bytesOf(res)], {type: type}));
+  blobCache[path] = url;
+  return url;
+}
+
+function rewriteStatic(doc) {
+  for (const el of doc.querySelectorAll('[src], [href]')) {
+    for (const attr of ['src', 'href']) {
+      const val = el.getAttribute(attr);
+      if (!val || !val.startsWith(STATIC_URL)) continue;
+      const url = blobUrlFor(val);
+      if (url) el.setAttribute(attr, url);
+    }
+  }
+}
+
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function render(res) {
   const frame = document.getElementById('app');
-  frame.srcdoc = res.body;
-  frame.onload = () => wire(frame.contentDocument);
+  const main = (res.ctype || 'text/html').split(';')[0].trim().toLowerCase();
+  if (main === 'text/html' || main === 'application/xhtml+xml') {
+    const doc = new DOMParser().parseFromString(res.body, 'text/html');
+    rewriteStatic(doc);
+    frame.srcdoc = doc.documentElement.outerHTML;
+    frame.onload = () => wire(frame.contentDocument);
+    return;
+  }
+  frame.onload = null;
+  if (main.startsWith('image/')) {
+    const url = URL.createObjectURL(new Blob([bytesOf(res)], {type: main}));
+    frame.srcdoc = '<img src="' + url + '" style="max-width:100%">';
+  } else if (main === 'application/json' || main.endsWith('+json')) {
+    let text = res.body;
+    try { text = JSON.stringify(JSON.parse(res.body), null, 2); } catch (e) {}
+    frame.srcdoc = '<pre>' + esc(text) + '</pre>';
+  } else if (main.startsWith('text/') || main.endsWith('+xml')) {
+    frame.srcdoc = '<pre>' + esc(res.body) + '</pre>';
+  } else {
+    const url = URL.createObjectURL(new Blob([bytesOf(res)], {type: main}));
+    const name = currentPath.split('/').filter(Boolean).pop() || 'download';
+    frame.srcdoc = '<a href="' + url + '" download="' + esc(name) + '">' +
+                   'Download ' + esc(name) + ' (' + main + ')</a>';
+  }
+}
+
+function resolve(href) {
+  const u = new URL(href, 'http://sharepack.local' + currentPath);
+  return u.pathname + u.search;
+}
+
+function navigate(method, path, formObj) {
+  const res = request(method, path, formObj);
+  currentPath = res.path || path;
+  render(res);
 }
 
 function wire(doc) {
@@ -84,15 +152,22 @@ function wire(doc) {
     }
     if (href.startsWith('#') || href === '') return;
     ev.preventDefault();
-    navigate('GET', href, null);
+    navigate('GET', resolve(href), null);
   });
   doc.addEventListener('submit', ev => {
     ev.preventDefault();
     const form = ev.target;
     const data = {};
-    new FormData(form).forEach((v, k) => { data[k] = v; });
-    const action = form.getAttribute('action') || '/';
-    navigate((form.method || 'GET').toUpperCase(), action, data);
+    new FormData(form, ev.submitter).forEach((v, k) => {
+      if (typeof v !== 'string') return;
+      if (k in data) {
+        if (Array.isArray(data[k])) data[k].push(v); else data[k] = [data[k], v];
+      } else {
+        data[k] = v;
+      }
+    });
+    const action = form.getAttribute('action') || currentPath;
+    navigate((form.method || 'GET').toUpperCase(), resolve(action), data);
   });
 }
 

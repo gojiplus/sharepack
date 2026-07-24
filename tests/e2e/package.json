@@ -1,0 +1,8 @@
+{
+  "name": "sharepack-e2e",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "pyodide": "0.26.4"
+  }
+}

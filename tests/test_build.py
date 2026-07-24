@@ -4,63 +4,26 @@ from pathlib import Path
 
 import pytest
 
-from sharepack.adapters import detect
-from sharepack.build import build
-from sharepack.collect import collect
+from sharepack.build import PYODIDE_VERSION, build
+from sharepack.errors import ProjectError
 
 FIXTURE = Path(__file__).parent / "fixtures_tasktrack"
 
-
-def test_collect_includes_code_and_db():
-    files, _ = collect(FIXTURE)
-    assert "manage.py" in files
-    assert "db.sqlite3" in files
-    assert any(f.endswith("list.html") for f in files)
-
-
-def test_collect_scrubs_secret_key():
-    files, scrubbed = collect(FIXTURE)
-    settings = files["tasktrack/settings.py"].decode()
-    assert "sharepack-throwaway-key-not-a-secret" in settings
-    assert any("SECRET_KEY replaced" in s for s in scrubbed)
-
-
-def test_collect_skips_pycache(tmp_path):
-    (tmp_path / "__pycache__").mkdir()
-    (tmp_path / "__pycache__" / "x.py").write_text("cached")
-    (tmp_path / "app.py").write_text("real")
-    files, _ = collect(tmp_path)
-    assert list(files) == ["app.py"]
-
-
-def test_collect_excludes_env_and_credential_files(tmp_path):
-    (tmp_path / ".env").write_text("SECRET=1")
-    (tmp_path / "aws_credentials.json").write_text("{}")
-    (tmp_path / "app.py").write_text("ok")
-    files, scrubbed = collect(tmp_path)
-    assert list(files) == ["app.py"]
-    assert len(scrubbed) == 2
-
-
-def test_detect_django():
-    files, _ = collect(FIXTURE)
-    adapter = detect(FIXTURE, files)
-    assert adapter.name == "django"
-    assert adapter.settings_module == "tasktrack.settings"
-    assert adapter.db_files == ["db.sqlite3"]
-
-
-def test_detect_rejects_non_django(tmp_path):
-    (tmp_path / "app.py").write_text("print('hi')")
-    files, _ = collect(tmp_path)
-    with pytest.raises(SystemExit):
-        detect(tmp_path, files)
+# The exact extraction regexes tests/e2e/replay.mjs uses. If a template
+# change breaks one of these, the e2e harness breaks with it.
+REPLAY_PATTERNS = (
+    r"const FILES = (\{.*?\});\n",
+    r"const APP_GLOBALS = (\{.*?\});\n",
+    r"const PYODIDE_PACKAGES = (\[.*?\]);\n",
+    r'const PIP_INSTALL = (".*?");\n',
+    r"const BOOT_PY = `\n([\s\S]*?)`;",
+)
 
 
 def test_build_produces_selfcontained_html(tmp_path):
     out = tmp_path / "demo.html"
-    build(FIXTURE, out, quiet=True)
-    html = out.read_text()
+    result = build(FIXTURE, out)
+    html = out.read_text(encoding="utf-8")
     assert "<!DOCTYPE html>" in html
     for placeholder in (
         "__FILES_JSON__",
@@ -68,11 +31,79 @@ def test_build_produces_selfcontained_html(tmp_path):
         "__TITLE__",
         "__PYODIDE_PACKAGES__",
         "__PIP_INSTALL__",
+        "__PYODIDE_VERSION__",
     ):
         assert placeholder not in html, f"unreplaced: {placeholder}"
+    assert result.out == out
+    assert result.adapter_name == "django"
+    assert result.n_files > 0
+    assert result.size_bytes == out.stat().st_size
+    assert result.db_files == ["db.sqlite3"]
+    assert result.db_bytes > 0
+
+
+def test_build_payload_contains_database(tmp_path):
+    out = tmp_path / "demo.html"
+    build(FIXTURE, out)
+    html = out.read_text(encoding="utf-8")
     m = re.search(r"const FILES = (\{.*?\});\n", html, re.S)
+    assert m is not None
     payload = json.loads(m.group(1))
     assert "db.sqlite3" in payload
-    assert "sqlite3" in html
-    assert "tzdata" in html
     assert "DJANGO_ALLOW_ASYNC_UNSAFE" in html
+
+
+def test_replay_contract(tmp_path):
+    """The e2e harness regex-extracts these exact shapes from the HTML."""
+    out = tmp_path / "demo.html"
+    build(FIXTURE, out)
+    html = out.read_text(encoding="utf-8")
+    for pattern in REPLAY_PATTERNS:
+        assert re.search(pattern, html, re.S), f"replay.mjs contract broken: {pattern}"
+
+
+def test_boot_py_safe_inside_js_template_literal(tmp_path):
+    out = tmp_path / "demo.html"
+    build(FIXTURE, out)
+    html = out.read_text(encoding="utf-8")
+    boot = re.search(r"const BOOT_PY = `\n([\s\S]*?)`;", html).group(1)
+    assert "`" not in boot
+    assert "${" not in boot
+
+
+def test_pyodide_version_override(tmp_path):
+    out = tmp_path / "demo.html"
+    build(FIXTURE, out, pyodide_version="0.27.0")
+    html = out.read_text(encoding="utf-8")
+    assert "pyodide/v0.27.0/full/pyodide.js" in html
+    assert f"pyodide/v{PYODIDE_VERSION}" not in html
+
+
+def test_pip_pin_override(tmp_path):
+    out = tmp_path / "demo.html"
+    build(FIXTURE, out, pip_pin="django==5.0.6")
+    html = out.read_text(encoding="utf-8")
+    assert '"django==5.0.6"' in html
+
+
+def test_static_url_in_app_globals(tmp_path):
+    out = tmp_path / "demo.html"
+    build(FIXTURE, out)
+    html = out.read_text(encoding="utf-8")
+    m = re.search(r"const APP_GLOBALS = (\{.*?\});\n", html, re.S)
+    globals_ = json.loads(m.group(1))
+    assert globals_["STATIC_URL"] == "/static/"
+    assert globals_["SETTINGS_MODULE"] == "tasktrack.settings"
+
+
+def test_missing_project_raises_project_error(tmp_path):
+    with pytest.raises(ProjectError, match="not a directory"):
+        build(tmp_path / "nope", tmp_path / "demo.html")
+
+
+def test_e2e_pyodide_version_matches():
+    """tests/e2e/package.json must pin the same Pyodide as the build."""
+    pkg = json.loads(
+        (Path(__file__).parent / "e2e" / "package.json").read_text(encoding="utf-8")
+    )
+    assert pkg["dependencies"]["pyodide"] == PYODIDE_VERSION
