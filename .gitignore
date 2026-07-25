@@ -13,3 +13,5 @@ _site/
 .DS_Store
 node_modules/
 /demo.html
+/flask-demo.html
+/fastapi-demo.html
