@@ -47,7 +47,7 @@ def test_build_payload_contains_database(tmp_path):
     out = tmp_path / "demo.html"
     build(FIXTURE, out)
     html = out.read_text(encoding="utf-8")
-    m = re.search(r"const FILES = (\{.*?\});\n", html, re.S)
+    m = re.search(r"const FILES = (\{.*?\});\n", html, re.DOTALL)
     assert m is not None
     payload = json.loads(m.group(1))
     assert "db.sqlite3" in payload
@@ -61,7 +61,9 @@ def test_replay_contract(tmp_path, fixture):
     build(Path(__file__).parent / fixture, out)
     html = out.read_text(encoding="utf-8")
     for pattern in REPLAY_PATTERNS:
-        assert re.search(pattern, html, re.S), f"replay.mjs contract broken: {pattern}"
+        assert re.search(pattern, html, re.DOTALL), (
+            f"replay.mjs contract broken: {pattern}"
+        )
 
 
 @pytest.mark.parametrize("fixture", ALL_FIXTURES)
@@ -120,7 +122,7 @@ def test_static_url_in_app_globals(tmp_path):
     out = tmp_path / "demo.html"
     build(FIXTURE, out)
     html = out.read_text(encoding="utf-8")
-    m = re.search(r"const APP_GLOBALS = (\{.*?\});\n", html, re.S)
+    m = re.search(r"const APP_GLOBALS = (\{.*?\});\n", html, re.DOTALL)
     globals_ = json.loads(m.group(1))
     assert globals_["STATIC_URL"] == "/static/"
     assert globals_["SETTINGS_MODULE"] == "tasktrack.settings"

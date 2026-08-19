@@ -11,7 +11,7 @@ FLASK_PIN = "flask>=3,<4"
 ENTRY_MODULES = ("app.py", "main.py", "wsgi.py", "application.py", "run.py")
 
 FLASK_MARKER_RE = re.compile(r"\bFlask\s*\(")
-APP_VAR_RE = re.compile(r"^(\w+)\s*=\s*Flask\s*\(", re.M)
+APP_VAR_RE = re.compile(r"^(\w+)\s*=\s*Flask\s*\(", re.MULTILINE)
 
 FLASK_PY = r"""
 import importlib

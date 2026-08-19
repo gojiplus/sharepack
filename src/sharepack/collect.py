@@ -60,8 +60,10 @@ STATIC_EXT = {
 }
 BUNDLED_EXT = TEXT_EXT | DATA_EXT | STATIC_EXT
 
-SECRET_KEY_RE = re.compile(r"""^(\s*SECRET_KEY\s*=\s*)(['"]).*?\2""", re.M)
-CRED_NAME_RE = re.compile(r"(secret|token|password|credential|apikey|api_key)", re.I)
+SECRET_KEY_RE = re.compile(r"""^(\s*SECRET_KEY\s*=\s*)(['"]).*?\2""", re.MULTILINE)
+CRED_NAME_RE = re.compile(
+    r"(secret|token|password|credential|apikey|api_key)", re.IGNORECASE
+)
 
 
 @dataclass(frozen=True)

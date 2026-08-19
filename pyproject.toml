@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.12.5,<0.13"]
+build-backend = "uv_build"
 
 [project]
 name = "sharepack"
@@ -9,6 +9,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
+version = "0.1.0"
 authors = [{ name = "Gaurav Sood" }]
 keywords = ["django", "flask", "fastapi", "pyodide", "wasm", "demo", "share", "single-file"]
 classifiers = [
@@ -19,7 +20,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Build Tools",
 ]
-dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/gojiplus/sharepack"
@@ -29,12 +29,6 @@ Documentation = "https://gojiplus.github.io/sharepack/"
 [project.scripts]
 sharepack = "sharepack.cli:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/sharepack"]
-
-[tool.hatch.version]
-source = "uv-dynamic-versioning"
-
 [tool.ruff]
 line-length = 88
 target-version = "py311"
@@ -42,14 +36,24 @@ extend-exclude = ["tests/fixtures_*"]
 
 [tool.ruff.lint]
 external = ["DOC"]
-select = ["E", "W", "F", "I", "B", "C4", "UP", "N", "D", "S", "SIM", "T20", "PT", "RUF"]
-ignore = ["D203", "D213"]
+select = [
+    "E", "W", "F", "I", "B", "C4", "UP", "N", "D", "S", "SIM", "T20", "PT", "RUF",
+    "PTH", "RET", "PIE", "FURB", "PERF", "DTZ", "LOG", "G", "TC", "FLY",
+    "RSE", "SLOT", "FA", "A", "EXE", "ICN", "PGH", "PLE", "ARG", "SLF",
+]
+# D203/D213: the google convention the fleet standard picks. W191/D206/D300:
+# ruff's own docs list these as always incompatible with `ruff format`, which
+# the standard also runs.
+ignore = ["D203", "D213", "W191", "D206", "D300"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "D"]
+"tests/**" = ["S101", "D", "ARG", "SLF"]
+# detect() is a uniform adapter interface; each adapter ignores the
+# parameters it does not need, and callers pass them by keyword.
+"src/sharepack/adapters/*.py" = ["ARG003"]
 "docs/**" = ["D"]
 "src/sharepack/cli.py" = ["T201"]
 
@@ -65,16 +69,14 @@ check-class-attributes = false
 allow-init-docstring = true
 exclude = '\.venv|tests|docs'
 
-[tool.uv-dynamic-versioning]
-vcs = "git"
-style = "pep440"
-fallback-version = "0.0.0"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["src"]
+
+[tool.uv.build-backend]
+module-name = "sharepack"
 
 [dependency-groups]
 docs = ["sphinx>=8", "furo", "myst-parser", "sphinx-copybutton", "py-canon @ git+https://github.com/gojiplus/py-canon@v1"]
