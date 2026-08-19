@@ -10,7 +10,7 @@ from ._shared import ENVELOPE_PY, UNPACK_PY, find_db_files, requirements_warning
 DJANGO_PIN = "django>=4.2,<5.2"
 
 SETTINGS_MODULE_RE = re.compile(r"""['"]([\w.]+\.settings[\w.]*)['"]""")
-STATIC_URL_RE = re.compile(r"""^\s*STATIC_URL\s*=\s*['"]([^'"]+)['"]""", re.M)
+STATIC_URL_RE = re.compile(r"""^\s*STATIC_URL\s*=\s*['"]([^'"]+)['"]""", re.MULTILINE)
 
 DJANGO_PY = r"""
 os.environ["DJANGO_SETTINGS_MODULE"] = SETTINGS_MODULE

@@ -15,7 +15,7 @@ MULTIPART_PIN = "python-multipart>=0.0.9"
 ENTRY_MODULES = ("main.py", "app.py", "api.py", "application.py", "run.py")
 
 FASTAPI_MARKER_RE = re.compile(r"\bFastAPI\s*\(")
-APP_VAR_RE = re.compile(r"^(\w+)\s*=\s*FastAPI\s*\(", re.M)
+APP_VAR_RE = re.compile(r"^(\w+)\s*=\s*FastAPI\s*\(", re.MULTILINE)
 
 FASTAPI_PY = r"""
 import glob, importlib
