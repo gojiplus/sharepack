@@ -531,8 +531,8 @@ wheels = [
 
 [[package]]
 name = "py-canon"
-version = "1.0.0.post18.dev0+3ebfb1c"
-source = { git = "https://github.com/gojiplus/py-canon?rev=v1#3ebfb1cd620e229a5e487723ae06e535bc1024ee" }
+version = "1.1.0"
+source = { git = "https://github.com/gojiplus/py-canon?rev=v1#f756be7a6e4dd0ea2a006c215e39ed2e1e29a412" }
 
 [[package]]
 name = "pydoclint"
