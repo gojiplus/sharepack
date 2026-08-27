@@ -71,6 +71,11 @@ exclude = '\.venv|tests|docs'
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+minversion = "6"
+log_level = "INFO"
+xfail_strict = true
+filterwarnings = ["error"]
+addopts = ["--strict-config", "--strict-markers", "-ra"]
 
 [tool.coverage.run]
 source = ["src"]
