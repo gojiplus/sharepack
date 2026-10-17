@@ -93,3 +93,6 @@ dev = [
     { include-group = "test" },
 ]
 test = ["pytest>=8", "pytest-cov>=6"]
+
+[tool.codespell]
+builtin = "clear,rare,en-GB_to_en-US"
