@@ -5,7 +5,13 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from ._shared import ENVELOPE_PY, UNPACK_PY, find_db_files, requirements_warnings
+from ._shared import (
+    ENVELOPE_PY,
+    STATIC_PY,
+    UNPACK_PY,
+    find_db_files,
+    requirements_warnings,
+)
 
 # The ceiling exists because Pyodide 0.26.4 ships pydantic 2.7.0 as a
 # built package and fastapi >= 0.116 requires pydantic >= 2.9. Raising
@@ -18,7 +24,7 @@ FASTAPI_MARKER_RE = re.compile(r"\bFastAPI\s*\(")
 APP_VAR_RE = re.compile(r"^(\w+)\s*=\s*FastAPI\s*\(", re.MULTILINE)
 
 FASTAPI_PY = r"""
-import glob, importlib
+import importlib
 from urllib.parse import urlencode, urljoin, urlsplit
 from http.cookies import SimpleCookie
 
@@ -49,21 +55,7 @@ app = _load_app(APP_SPEC)
 COOKIES = {}
 
 
-def _find_static(rel):
-    hits = sorted(glob.glob("/app/**/static/" + rel, recursive=True))
-    return hits[0] if hits else None
-
-
-def _serve_static(path):
-    rel = path[len(STATIC_URL):].split("?")[0]
-    hit = _find_static(rel)
-    if not hit:
-        return json.dumps({"status": 404, "path": path, "ctype": "text/plain",
-                           "b64": False, "body": "static file not found: " + rel})
-    ctype = mimetypes.guess_type(hit)[0] or "application/octet-stream"
-    with open(hit, "rb") as f:
-        raw = f.read()
-    return _envelope(200, path, ctype, raw)
+_find_static = _glob_static
 
 
 async def _asgi(method, path, body, ctype):
@@ -151,7 +143,7 @@ async def handle(method, path, form_json):
         return _error(path)
 """
 
-BOOT_PY = UNPACK_PY + ENVELOPE_PY + FASTAPI_PY
+BOOT_PY = UNPACK_PY + ENVELOPE_PY + STATIC_PY + FASTAPI_PY
 
 
 class FastAPIAdapter:

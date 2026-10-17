@@ -2,7 +2,8 @@
 
 Boot scripts run inside Pyodide and are spliced into a JS template
 literal, so they must never contain a backtick or "${". Every adapter
-composes its BOOT_PY as ``UNPACK_PY + ENVELOPE_PY + <framework part>``;
+composes its BOOT_PY as ``UNPACK_PY + ENVELOPE_PY + <framework part>``,
+adding STATIC_PY before the framework part when it serves static files;
 UNPACK_PY's leading newline is part of the e2e extraction contract.
 """
 
@@ -52,6 +53,30 @@ def _error(path):
     import traceback
     return json.dumps({"status": 500, "path": path, "ctype": "text/plain",
                        "b64": False, "body": traceback.format_exc()})
+"""
+
+
+# Static files under STATIC_URL. The framework part defines _find_static(rel),
+# which may call _glob_static, the search every adapter falls back on.
+STATIC_PY = r"""
+import glob
+
+
+def _glob_static(rel):
+    hits = sorted(glob.glob("/app/**/static/" + rel, recursive=True))
+    return hits[0] if hits else None
+
+
+def _serve_static(path):
+    rel = path[len(STATIC_URL):].split("?")[0]
+    hit = _find_static(rel)
+    if not hit:
+        return json.dumps({"status": 404, "path": path, "ctype": "text/plain",
+                           "b64": False, "body": "static file not found: " + rel})
+    ctype = mimetypes.guess_type(hit)[0] or "application/octet-stream"
+    with open(hit, "rb") as f:
+        raw = f.read()
+    return _envelope(200, path, ctype, raw)
 """
 
 

@@ -5,7 +5,13 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from ._shared import ENVELOPE_PY, UNPACK_PY, find_db_files, requirements_warnings
+from ._shared import (
+    ENVELOPE_PY,
+    STATIC_PY,
+    UNPACK_PY,
+    find_db_files,
+    requirements_warnings,
+)
 
 DJANGO_PIN = "django>=4.2,<5.2"
 
@@ -36,21 +42,7 @@ def _find_static(rel):
             return hit
     except Exception:
         pass
-    import glob
-    hits = sorted(glob.glob("/app/**/static/" + rel, recursive=True))
-    return hits[0] if hits else None
-
-
-def _serve_static(path):
-    rel = path[len(STATIC_URL):].split("?")[0]
-    hit = _find_static(rel)
-    if not hit:
-        return json.dumps({"status": 404, "path": path, "ctype": "text/plain",
-                           "b64": False, "body": "static file not found: " + rel})
-    ctype = mimetypes.guess_type(hit)[0] or "application/octet-stream"
-    with open(hit, "rb") as f:
-        raw = f.read()
-    return _envelope(200, path, ctype, raw)
+    return _glob_static(rel)
 
 
 def handle(method, path, form_json):
@@ -69,7 +61,7 @@ def handle(method, path, form_json):
         return _error(path)
 """
 
-BOOT_PY = UNPACK_PY + ENVELOPE_PY + DJANGO_PY
+BOOT_PY = UNPACK_PY + ENVELOPE_PY + STATIC_PY + DJANGO_PY
 
 
 class DjangoAdapter:
