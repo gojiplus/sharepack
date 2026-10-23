@@ -18,6 +18,10 @@ from ._shared import (
 # PYODIDE_VERSION is what relaxes this pin.
 FASTAPI_PIN = "fastapi>=0.110,<0.116"
 MULTIPART_PIN = "python-multipart>=0.0.9"
+# anyio 4.15 requires typing_extensions >= 4.16, newer than the 4.11 that
+# Pyodide 0.26.4 ships, and micropip cannot replace a bundled package.
+# micropip installs these one at a time, so the cap must come first.
+ANYIO_PIN = "anyio<4.15"
 ENTRY_MODULES = ("main.py", "app.py", "api.py", "application.py", "run.py")
 
 FASTAPI_MARKER_RE = re.compile(r"\bFastAPI\s*\(")
@@ -244,7 +248,9 @@ class FastAPIAdapter:
             Mapping of ``__PLACEHOLDER__`` names to replacement strings.
         """
         return {
-            "__PIP_INSTALL__": json.dumps([pip_pin or FASTAPI_PIN, MULTIPART_PIN]),
+            "__PIP_INSTALL__": json.dumps(
+                [ANYIO_PIN, pip_pin or FASTAPI_PIN, MULTIPART_PIN]
+            ),
             "__PYODIDE_PACKAGES__": json.dumps(self.pyodide_packages),
             "__APP_GLOBALS__": json.dumps(
                 {"APP_SPEC": self.app_spec, "STATIC_URL": self.static_url}
