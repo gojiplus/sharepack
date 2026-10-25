@@ -95,7 +95,8 @@ def test_fastapi_build_globals_and_pins(tmp_path):
     build(Path(__file__).parent / "fixtures_fastapiapp", out)
     html = out.read_text(encoding="utf-8")
     pip = json.loads(re.search(r"const PIP_INSTALL = (\[.*?\]);\n", html).group(1))
-    assert pip[0].startswith("fastapi")
+    assert pip[0] == "anyio<4.15"
+    assert any(req.startswith("fastapi") for req in pip)
     assert any(req.startswith("python-multipart") for req in pip)
     pkgs = json.loads(
         re.search(r"const PYODIDE_PACKAGES = (\[.*?\]);\n", html).group(1)
