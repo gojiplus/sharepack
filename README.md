@@ -1,4 +1,4 @@
-# sharepack
+# sharepack: your Python web app in a single HTML file
 
 [![PyPI](https://img.shields.io/pypi/v/sharepack)](https://pypi.org/project/sharepack/)
 [![CI](https://github.com/gojiplus/sharepack/actions/workflows/ci.yml/badge.svg)](https://github.com/gojiplus/sharepack/actions/workflows/ci.yml)
